@@ -1,7 +1,7 @@
 const axios = require('axios');
 
 const SHOP = 'demostracion-de-uso.myshopify.com';
-const ACCESS_TOKEN = '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';
+const ACCESS_TOKEN = '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';
 const TARGET_PREFIX = 'Tefwefwefewg24325';
 
 const headers = {

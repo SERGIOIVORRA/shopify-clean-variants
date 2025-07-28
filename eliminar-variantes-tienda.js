@@ -56,16 +56,11 @@ async function eliminarYActualizar() {
       const variants = product.node.variants.edges;
 
       let variantesEliminadas = 0;
-      let valoresUsados = new Set();
 
       for (const variant of variants) {
         const { id, title, option1, option2, option3 } = variant.node;
 
-        const match = [option1, option2, option3].some(val =>
-          val?.startsWith(TARGET_PREFIX)
-        );
-
-        if (match) {
+        if ([option1, option2, option3].some(val => val?.startsWith(TARGET_PREFIX))) {
           console.log(`🧹 Eliminando variante "${title}" (${id}) del producto "${productTitle}"`);
 
           const mutation = {
@@ -82,40 +77,31 @@ async function eliminarYActualizar() {
             `,
           };
 
-          const deleteRes = await axios.post(
+          await axios.post(
             `https://${SHOP}/admin/api/2024-04/graphql.json`,
             mutation,
             { headers }
           );
 
-          const errors = deleteRes.data.data.productVariantDelete.userErrors;
-          if (errors.length) {
-            console.error('❌ Error al eliminar variante:', errors);
-          } else {
-            variantesEliminadas++;
-          }
-        } else {
-          [option1, option2, option3].forEach(val => {
-            if (val) valoresUsados.add(val);
-          });
+          variantesEliminadas++;
         }
       }
 
+      // Si se eliminaron variantes, actualizamos opciones
       if (variantesEliminadas > 0) {
-        const updatedOptions = options.map(opt => {
-          const newValues = opt.values.filter(
-            val => valoresUsados.has(val) || !val.startsWith(TARGET_PREFIX)
-          );
-          return { name: opt.name, values: newValues };
+        const nuevasOpciones = options.map(opt => {
+          return {
+            name: opt.name,
+            values: opt.values.filter(val => !val.startsWith(TARGET_PREFIX)),
+          };
         });
 
-        const mutationUpdate = {
+        const updateMutation = {
           query: `
             mutation productUpdate($input: ProductInput!) {
               productUpdate(input: $input) {
                 product {
                   id
-                  title
                 }
                 userErrors {
                   field
@@ -127,27 +113,27 @@ async function eliminarYActualizar() {
           variables: {
             input: {
               id: productId,
-              options: updatedOptions,
+              options: nuevasOpciones,
             },
           },
         };
 
         const updateRes = await axios.post(
           `https://${SHOP}/admin/api/2024-04/graphql.json`,
-          mutationUpdate,
+          updateMutation,
           { headers }
         );
 
         const updateErrors = updateRes.data.data.productUpdate.userErrors;
-        if (updateErrors.length) {
-          console.error('❌ Error al actualizar opciones del producto:', updateErrors);
+        if (updateErrors.length > 0) {
+          console.error(`❌ Error al actualizar opciones del producto "${productTitle}":`, updateErrors);
         } else {
-          console.log(`✅ Opciones del producto "${productTitle}" actualizadas`);
+          console.log(`✅ Opciones del producto "${productTitle}" actualizadas correctamente`);
         }
       }
     }
 
-    console.log('🎯 Proceso completo');
+    console.log('🎯 Proceso terminado');
   } catch (err) {
     console.error('❌ Error general:', err.response?.data || err.message);
   }

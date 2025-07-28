@@ -2,7 +2,7 @@ const axios = require('axios');
 
 const SHOP = 'demostracion-de-uso.myshopify.com';
 const ACCESS_TOKEN = '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';
-const PRODUCT_ID = '10199200825687'; // ID numérico sin GID
+const PRODUCT_ID = '10199199973719'; // ID numérico sin GID
 const PREFIX = 'FLP'; // <-- Cambia esto por lo que quieras eliminar
 
 const headers = {

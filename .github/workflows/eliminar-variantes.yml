@@ -2,7 +2,7 @@ name: Eliminar variantes
 
 on:
   schedule:
-    - cron: '*/8 * * * *'
+    - cron: '*/1 * * * *'
   workflow_dispatch:
 
 jobs:

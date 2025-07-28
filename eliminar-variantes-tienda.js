@@ -2,8 +2,10 @@ const axios = require('axios');
 
 const SHOP = 'demostracion-de-uso.myshopify.com';
 const ACCESS_TOKEN = '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';
-const PRODUCT_ID = '10199199973719'; // ID numérico sin GID
-const PREFIX = 'FLP'; // <-- Cambia esto por lo que quieras eliminar
+const PRODUCT_ID = '10199199973719';
+const COLLECTION_ID = '659816284503';
+const EXTRA_PRODUCT_ID = '10199584538967';
+const PREFIX = 'FLP';
 
 const headers = {
   'X-Shopify-Access-Token': ACCESS_TOKEN,
@@ -18,7 +20,6 @@ async function eliminarVariantesConPrefijo() {
     );
 
     const variants = res.data.variants;
-
     console.log(`🟢 Producto con ${variants.length} variantes`);
 
     let eliminadas = 0;
@@ -30,12 +31,10 @@ async function eliminarVariantesConPrefijo() {
 
       if (match) {
         console.log(`🧹 Eliminando variante: ${variant.title} (${variant.id})`);
-
         await axios.delete(
           `https://${SHOP}/admin/api/2024-04/variants/${variant.id}.json`,
           { headers }
         );
-
         console.log(`✅ Variante eliminada: ${variant.title}`);
         eliminadas++;
       }
@@ -44,6 +43,22 @@ async function eliminarVariantesConPrefijo() {
     if (eliminadas === 0) {
       console.log('⚠️ No se encontraron variantes que coincidan con el prefijo.');
     }
+
+    // Eliminar colección
+    console.log(`🧺 Eliminando colección ID: ${COLLECTION_ID}`);
+    await axios.delete(
+      `https://${SHOP}/admin/api/2024-04/custom_collections/${COLLECTION_ID}.json`,
+      { headers }
+    );
+    console.log(`✅ Colección eliminada`);
+
+    // Eliminar producto adicional
+    console.log(`🗑️ Eliminando producto ID: ${EXTRA_PRODUCT_ID}`);
+    await axios.delete(
+      `https://${SHOP}/admin/api/2024-04/products/${EXTRA_PRODUCT_ID}.json`,
+      { headers }
+    );
+    console.log(`✅ Producto eliminado`);
 
     console.log('🎯 Proceso terminado');
   } catch (error) {

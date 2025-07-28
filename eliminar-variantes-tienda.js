@@ -1,23 +1,27 @@
 const axios = require('axios');
 
-// 👉 Pega aquí tus datos reales (hazlo solo localmente, NO los publiques)
 const SHOP = 'demostracion-de-uso.myshopify.com';
 const ACCESS_TOKEN = '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';
-const TARGET_OPTION_VALUE = 'Tefwefwefewg24325';
+const TARGET_PREFIX = 'Tefwefwefewg24325';
 
 const headers = {
   'Content-Type': 'application/json',
   'X-Shopify-Access-Token': ACCESS_TOKEN,
 };
 
-async function eliminarVariantes() {
+async function eliminarYActualizar() {
   const query = {
     query: `
       {
         products(first: 50) {
           edges {
             node {
+              id
               title
+              options {
+                name
+                values
+              }
               variants(first: 50) {
                 edges {
                   node {
@@ -46,13 +50,18 @@ async function eliminarVariantes() {
     const products = res.data.data.products.edges;
 
     for (const product of products) {
+      const productId = product.node.id;
+      const productTitle = product.node.title;
+      const options = product.node.options;
       const variants = product.node.variants.edges;
 
-      for (const variant of variants) {
-        const { id, option1, option2, option3, title } = variant.node;
+      let variantesEliminadas = 0;
 
-        if ([option1, option2, option3].includes(TARGET_OPTION_VALUE)) {
-          console.log(`🧹 Eliminando variante: ${title} (${id})`);
+      for (const variant of variants) {
+        const { id, title, option1, option2, option3 } = variant.node;
+
+        if ([option1, option2, option3].some(val => val?.startsWith(TARGET_PREFIX))) {
+          console.log(`🧹 Eliminando variante "${title}" (${id}) del producto "${productTitle}"`);
 
           const mutation = {
             query: `
@@ -76,18 +85,61 @@ async function eliminarVariantes() {
 
           const errors = deleteRes.data.data.productVariantDelete.userErrors;
           if (errors.length) {
-            console.error('❌ Error:', errors);
+            console.error('❌ Error al eliminar variante:', errors);
           } else {
-            console.log('✅ Variante eliminada con éxito');
+            variantesEliminadas++;
           }
+        }
+      }
+
+      if (variantesEliminadas > 0) {
+        const updatedOptions = options.map(opt => {
+          const newValues = opt.values.filter(val => !val.startsWith(TARGET_PREFIX));
+          return { name: opt.name, values: newValues };
+        });
+
+        const mutationUpdate = {
+          query: `
+            mutation productUpdate($input: ProductInput!) {
+              productUpdate(input: $input) {
+                product {
+                  id
+                  title
+                }
+                userErrors {
+                  field
+                  message
+                }
+              }
+            }
+          `,
+          variables: {
+            input: {
+              id: productId,
+              options: updatedOptions
+            },
+          },
+        };
+
+        const updateRes = await axios.post(
+          `https://${SHOP}/admin/api/2024-04/graphql.json`,
+          mutationUpdate,
+          { headers }
+        );
+
+        const updateErrors = updateRes.data.data.productUpdate.userErrors;
+        if (updateErrors.length) {
+          console.error('❌ Error al actualizar opciones del producto:', updateErrors);
+        } else {
+          console.log(`✅ Opciones del producto "${productTitle}" actualizadas correctamente`);
         }
       }
     }
 
-    console.log('🎯 Proceso terminado');
+    console.log('🎯 Proceso completo');
   } catch (err) {
     console.error('❌ Error general:', err.response?.data || err.message);
   }
 }
 
-eliminarVariantes();
+eliminarYActualizar();

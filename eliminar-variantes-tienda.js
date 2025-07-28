@@ -56,11 +56,16 @@ async function eliminarYActualizar() {
       const variants = product.node.variants.edges;
 
       let variantesEliminadas = 0;
+      let valoresUsados = new Set();
 
       for (const variant of variants) {
         const { id, title, option1, option2, option3 } = variant.node;
 
-        if ([option1, option2, option3].some(val => val?.startsWith(TARGET_PREFIX))) {
+        const match = [option1, option2, option3].some(val =>
+          val?.startsWith(TARGET_PREFIX)
+        );
+
+        if (match) {
           console.log(`🧹 Eliminando variante "${title}" (${id}) del producto "${productTitle}"`);
 
           const mutation = {
@@ -89,12 +94,18 @@ async function eliminarYActualizar() {
           } else {
             variantesEliminadas++;
           }
+        } else {
+          [option1, option2, option3].forEach(val => {
+            if (val) valoresUsados.add(val);
+          });
         }
       }
 
       if (variantesEliminadas > 0) {
         const updatedOptions = options.map(opt => {
-          const newValues = opt.values.filter(val => !val.startsWith(TARGET_PREFIX));
+          const newValues = opt.values.filter(
+            val => valoresUsados.has(val) || !val.startsWith(TARGET_PREFIX)
+          );
           return { name: opt.name, values: newValues };
         });
 
@@ -116,7 +127,7 @@ async function eliminarYActualizar() {
           variables: {
             input: {
               id: productId,
-              options: updatedOptions
+              options: updatedOptions,
             },
           },
         };
@@ -131,7 +142,7 @@ async function eliminarYActualizar() {
         if (updateErrors.length) {
           console.error('❌ Error al actualizar opciones del producto:', updateErrors);
         } else {
-          console.log(`✅ Opciones del producto "${productTitle}" actualizadas correctamente`);
+          console.log(`✅ Opciones del producto "${productTitle}" actualizadas`);
         }
       }
     }

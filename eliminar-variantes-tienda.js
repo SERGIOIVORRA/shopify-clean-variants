@@ -2,141 +2,53 @@ const axios = require('axios');
 
 const SHOP = 'demostracion-de-uso.myshopify.com';
 const ACCESS_TOKEN = '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';
-const TARGET_PREFIX = 'Tefwefwefewg24325';
+const PRODUCT_ID = '10199199973719'; // ID numérico sin GID
+const PREFIX = 'FLP'; // <-- Cambia esto por lo que quieras eliminar
 
 const headers = {
-  'Content-Type': 'application/json',
   'X-Shopify-Access-Token': ACCESS_TOKEN,
+  'Content-Type': 'application/json',
 };
 
-async function eliminarYActualizar() {
-  const query = {
-    query: `
-      {
-        products(first: 50) {
-          edges {
-            node {
-              id
-              title
-              options {
-                name
-                values
-              }
-              variants(first: 50) {
-                edges {
-                  node {
-                    id
-                    title
-                    option1
-                    option2
-                    option3
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    `,
-  };
-
+async function eliminarVariantesConPrefijo() {
   try {
-    const res = await axios.post(
-      `https://${SHOP}/admin/api/2024-04/graphql.json`,
-      query,
+    const res = await axios.get(
+      `https://${SHOP}/admin/api/2024-04/products/${PRODUCT_ID}/variants.json`,
       { headers }
     );
 
-    const products = res.data.data.products.edges;
+    const variants = res.data.variants;
 
-    for (const product of products) {
-      const productId = product.node.id;
-      const productTitle = product.node.title;
-      const options = product.node.options;
-      const variants = product.node.variants.edges;
+    console.log(`🟢 Producto con ${variants.length} variantes`);
 
-      let variantesEliminadas = 0;
+    let eliminadas = 0;
 
-      for (const variant of variants) {
-        const { id, title, option1, option2, option3 } = variant.node;
+    for (const variant of variants) {
+      const match = [variant.option1, variant.option2, variant.option3].some(
+        opt => opt && opt.startsWith(PREFIX)
+      );
 
-        if ([option1, option2, option3].some(val => val?.startsWith(TARGET_PREFIX))) {
-          console.log(`🧹 Eliminando variante "${title}" (${id}) del producto "${productTitle}"`);
+      if (match) {
+        console.log(`🧹 Eliminando variante: ${variant.title} (${variant.id})`);
 
-          const mutation = {
-            query: `
-              mutation {
-                productVariantDelete(id: "${id}") {
-                  deletedProductVariantId
-                  userErrors {
-                    field
-                    message
-                  }
-                }
-              }
-            `,
-          };
-
-          await axios.post(
-            `https://${SHOP}/admin/api/2024-04/graphql.json`,
-            mutation,
-            { headers }
-          );
-
-          variantesEliminadas++;
-        }
-      }
-
-      // Si se eliminaron variantes, actualizamos opciones
-      if (variantesEliminadas > 0) {
-        const nuevasOpciones = options.map(opt => {
-          return {
-            name: opt.name,
-            values: opt.values.filter(val => !val.startsWith(TARGET_PREFIX)),
-          };
-        });
-
-        const updateMutation = {
-          query: `
-            mutation productUpdate($input: ProductInput!) {
-              productUpdate(input: $input) {
-                product {
-                  id
-                }
-                userErrors {
-                  field
-                  message
-                }
-              }
-            }
-          `,
-          variables: {
-            input: {
-              id: productId,
-              options: nuevasOpciones,
-            },
-          },
-        };
-
-        const updateRes = await axios.post(
-          `https://${SHOP}/admin/api/2024-04/graphql.json`,
-          updateMutation,
+        await axios.delete(
+          `https://${SHOP}/admin/api/2024-04/variants/${variant.id}.json`,
           { headers }
         );
 
-        const updateErrors = updateRes.data.data.productUpdate.userErrors;
-        if (updateErrors.length > 0) {
-          console.error(`❌ Error al actualizar opciones del producto "${productTitle}":`, updateErrors);
-        } else {
-          console.log(`✅ Opciones del producto "${productTitle}" actualizadas correctamente`);
-        }
+        console.log(`✅ Variante eliminada: ${variant.title}`);
+        eliminadas++;
       }
     }
 
+    if (eliminadas === 0) {
+      console.log('⚠️ No se encontraron variantes que coincidan con el prefijo.');
+    }
+
     console.log('🎯 Proceso terminado');
-  } catch (err) {
-    console.error('❌ Error general:', err.response?.data || err.message);
+  } catch (error) {
+    console.error('❌ Error:', error.response?.data || error.message);
   }
 }
 
-eliminarYActualizar();
+eliminarVariantesConPrefijo();

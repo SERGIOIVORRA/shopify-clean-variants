@@ -1,0 +1,26 @@
+name: Eliminar variantes
+
+on:
+  schedule:
+    - cron: '*/8 * * * *'
+  workflow_dispatch:
+
+jobs:
+  clean-variants:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Instalar Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+
+      - name: Instalar dependencias
+        run: npm install axios
+
+      - name: Ejecutar script
+        env:
+          SHOP_DOMAIN: demostracion-de-uso.myshopify.com
+          ADMIN_TOKEN: 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
+        run: node eliminar-variantes-tienda.js
